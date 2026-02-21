@@ -574,3 +574,6 @@ input[type="number"]{
   color: var(--ink-2);
   line-height: 1.45;
 }
+
+/* Exit card visibility helper */
+.hidden{ display: none !important; }
