@@ -71,7 +71,7 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Inputs</h2>
-        <p class="panel-sub">Edit values below (sliders + number boxes). Changes update instantly.</p>
+        <p class="panel-sub">Edit values below (sliders + number boxes). Changes update instantly after unlocking.</p>
       </div>
 
       <div class="inputs-grid">
@@ -204,31 +204,31 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Outputs</h2>
-        <p class="panel-sub">Answer the prediction questions to unlock the results.</p>
+        <p class="panel-sub">Answer the prediction questions to unlock the results. Then complete the exit ticket.</p>
       </div>
 
-      <!-- Predict-first MCQ block -->
+      <!-- Predict-first MCQ block (no deflator references) -->
       <div class="quiz-card" id="quizCard">
         <div class="quiz-title">Predict first</div>
 
-        <div class="quiz-q" data-q="q1">
+        <div class="quiz-q">
           <div class="quiz-qtitle">1) If <strong>only prices increase</strong> (quantities fixed), what happens?</div>
-          <label class="quiz-opt"><input type="radio" name="q1" value="a"> Nominal ↑, Real ↑, Deflator unchanged</label>
-          <label class="quiz-opt"><input type="radio" name="q1" value="b"> Nominal ↑, Real unchanged, Deflator ↑</label>
-          <label class="quiz-opt"><input type="radio" name="q1" value="c"> Nominal unchanged, Real ↑, Deflator ↑</label>
+          <label class="quiz-opt"><input type="radio" name="q1" value="a"> Nominal ↑, Real ↑</label>
+          <label class="quiz-opt"><input type="radio" name="q1" value="b"> Nominal ↑, Real unchanged</label>
+          <label class="quiz-opt"><input type="radio" name="q1" value="c"> Nominal unchanged, Real ↑</label>
           <div class="quiz-feedback" id="fb_q1"></div>
         </div>
 
-        <div class="quiz-q" data-q="q2">
+        <div class="quiz-q">
           <div class="quiz-qtitle">2) If <strong>only quantities increase</strong> (prices fixed), what happens?</div>
-          <label class="quiz-opt"><input type="radio" name="q2" value="a"> Nominal ↑, Real ↑, Deflator unchanged</label>
-          <label class="quiz-opt"><input type="radio" name="q2" value="b"> Nominal ↑, Real unchanged, Deflator ↑</label>
-          <label class="quiz-opt"><input type="radio" name="q2" value="c"> Nominal ↓, Real ↑, Deflator ↑</label>
+          <label class="quiz-opt"><input type="radio" name="q2" value="a"> Nominal ↑, Real ↑</label>
+          <label class="quiz-opt"><input type="radio" name="q2" value="b"> Nominal ↑, Real unchanged</label>
+          <label class="quiz-opt"><input type="radio" name="q2" value="c"> Nominal ↓, Real ↑</label>
           <div class="quiz-feedback" id="fb_q2"></div>
         </div>
 
-        <div class="quiz-q" data-q="q3">
-          <div class="quiz-qtitle">3) If Nominal GDP rises but Real GDP is flat (base year fixed), the main driver is:</div>
+        <div class="quiz-q">
+          <div class="quiz-qtitle">3) If Nominal GDP rises but Real GDP is flat (base-year prices fixed), the main driver is:</div>
           <label class="quiz-opt"><input type="radio" name="q3" value="a"> Higher quantities</label>
           <label class="quiz-opt"><input type="radio" name="q3" value="b"> Higher prices</label>
           <label class="quiz-opt"><input type="radio" name="q3" value="c"> Lower prices</label>
@@ -308,13 +308,40 @@
 
         <div id="explain" class="explain"></div>
       </div>
+
+      <!-- Exit Ticket (hidden until unlocked) -->
+      <div class="quiz-card hidden" id="exitCard">
+        <div class="quiz-title">Exit ticket</div>
+
+        <div class="quiz-q">
+          <div class="quiz-qtitle" id="exitQ1Title">1) (base-year question loads here)</div>
+          <label class="quiz-opt"><input type="radio" name="e1" value="a"> Real GDP increases in all years</label>
+          <label class="quiz-opt"><input type="radio" name="e1" value="b"> Real GDP changes only in the year whose price changed</label>
+          <label class="quiz-opt"><input type="radio" name="e1" value="c"> Real GDP is unchanged in all years</label>
+          <div class="quiz-feedback" id="fb_e1"></div>
+        </div>
+
+        <div class="quiz-q">
+          <div class="quiz-qtitle" id="exitQ2Title">2) (scenario question loads here)</div>
+          <label class="quiz-opt"><input type="radio" name="e2" value="a"> Real GDP increases</label>
+          <label class="quiz-opt"><input type="radio" name="e2" value="b"> Real GDP decreases</label>
+          <label class="quiz-opt"><input type="radio" name="e2" value="c"> Real GDP is unchanged</label>
+          <div class="quiz-feedback" id="fb_e2"></div>
+        </div>
+
+        <div class="quiz-actions">
+          <button id="checkExitBtn" class="btn">Check exit ticket</button>
+          <button id="resetExitBtn" class="btn subtle">Clear exit answers</button>
+          <div id="exitStatus" class="quiz-status"></div>
+        </div>
+      </div>
     </section>
   </main>
 
   <footer class="container footer">
     <div class="footer-inner">
-      <div class="footer-note">Tip: If only prices rise, nominal rises but real doesn’t (base year fixed prices).</div>
-      <div class="footer-note">If only quantities rise, both nominal and real rise.</div>
+      <div class="footer-note">Tip: Non–base-year price changes do not affect real GDP; base-year price changes do.</div>
+      <div class="footer-note">Exit ticket adapts to the base year and your current scenario.</div>
     </div>
   </footer>
 
