@@ -17,7 +17,7 @@ const els = {
   ruleReal: document.getElementById("ruleReal"),
   ruleDef: document.getElementById("ruleDef"),
 
-  // quiz
+  // quiz (predict-first)
   checkQuizBtn: document.getElementById("checkQuizBtn"),
   resetQuizBtn: document.getElementById("resetQuizBtn"),
   quizStatus: document.getElementById("quizStatus"),
@@ -26,36 +26,35 @@ const els = {
   fb_q3: document.getElementById("fb_q3"),
 
   // lock
-  lockedWrap: document.getElementById("lockedWrap")
+  lockedWrap: document.getElementById("lockedWrap"),
+
+  // exit ticket
+  exitCard: document.getElementById("exitCard"),
+  exitQ1Title: document.getElementById("exitQ1Title"),
+  exitQ2Title: document.getElementById("exitQ2Title"),
+  checkExitBtn: document.getElementById("checkExitBtn"),
+  resetExitBtn: document.getElementById("resetExitBtn"),
+  exitStatus: document.getElementById("exitStatus"),
+  fb_e1: document.getElementById("fb_e1"),
+  fb_e2: document.getElementById("fb_e2")
 };
 
-// App state: for each year, store pA,qA,pB,qB
 let state = null;
 let scenarioSnapshot = null;
 
-// Charts
 let chartNom = null;
 let chartReal = null;
 let chartDef = null;
 
-// Quiz correctness gate
 let outputsUnlocked = false;
 
 function setStatus(msg) {
   if (els.status) els.status.textContent = msg;
 }
 
-function money(x) {
-  return x.toFixed(0);
-}
-function pct(x) {
-  if (!isFinite(x)) return "—";
-  return (100 * x).toFixed(1) + "%";
-}
-function defl(x) {
-  if (!isFinite(x)) return "—";
-  return x.toFixed(1);
-}
+function money(x) { return x.toFixed(0); }
+function pct(x) { return isFinite(x) ? (100 * x).toFixed(1) + "%" : "—"; }
+function defl(x) { return isFinite(x) ? x.toFixed(1) : "—"; }
 
 function resetRubric() {
   [els.ruleNom, els.ruleReal, els.ruleDef].filter(Boolean).forEach(el => {
@@ -76,14 +75,16 @@ function completeRubric() {
 function lockOutputs() {
   outputsUnlocked = false;
   if (els.lockedWrap) els.lockedWrap.classList.add("locked");
+  if (els.exitCard) els.exitCard.classList.add("hidden");
   resetRubric();
 }
 
 function unlockOutputs() {
   outputsUnlocked = true;
   if (els.lockedWrap) els.lockedWrap.classList.remove("locked");
-  // Update outputs immediately once unlocked
+  if (els.exitCard) els.exitCard.classList.remove("hidden");
   updateAll();
+  refreshExitPrompts(); // make exit questions reflect base year + scenario
 }
 
 function getSelected(name) {
@@ -98,46 +99,48 @@ function setFeedback(el, ok, msg) {
   el.textContent = msg;
 }
 
-function clearQuiz() {
-  ["q1","q2","q3"].forEach(q => {
-    document.querySelectorAll(`input[name="${q}"]`).forEach(r => { r.checked = false; });
-  });
+function clearRadios(names) {
+  names.forEach(q => document.querySelectorAll(`input[name="${q}"]`).forEach(r => { r.checked = false; }));
+}
+
+function clearPredictQuiz() {
+  clearRadios(["q1","q2","q3"]);
   if (els.quizStatus) els.quizStatus.textContent = "";
-  if (els.fb_q1) els.fb_q1.textContent = "";
-  if (els.fb_q2) els.fb_q2.textContent = "";
-  if (els.fb_q3) els.fb_q3.textContent = "";
-  [els.fb_q1, els.fb_q2, els.fb_q3].forEach(x => x && x.classList.remove("good","bad"));
+  [els.fb_q1, els.fb_q2, els.fb_q3].forEach(x => {
+    if (!x) return;
+    x.textContent = "";
+    x.classList.remove("good","bad");
+  });
   lockOutputs();
   setStatus("Answer the prediction questions to unlock the results.");
 }
 
-function checkQuiz() {
-  // Correct answers:
-  // q1: prices only -> nominal up, real unchanged, deflator up (b)
-  // q2: quantities only -> nominal up, real up, deflator unchanged (a)
-  // q3: nominal up, real flat -> higher prices (b)
+function checkPredictQuiz() {
+  // Correct answers (no deflator references):
+  // q1 prices-only -> nominal ↑, real unchanged (b)
+  // q2 quantities-only -> nominal ↑, real ↑ (a)
+  // q3 nominal ↑, real flat -> higher prices (b)
   const ans = { q1: "b", q2: "a", q3: "b" };
 
   const a1 = getSelected("q1");
   const a2 = getSelected("q2");
   const a3 = getSelected("q3");
 
-  let ok1 = (a1 === ans.q1);
-  let ok2 = (a2 === ans.q2);
-  let ok3 = (a3 === ans.q3);
+  const ok1 = (a1 === ans.q1);
+  const ok2 = (a2 === ans.q2);
+  const ok3 = (a3 === ans.q3);
 
-  // Feedback messages (short + rule-based)
   setFeedback(els.fb_q1, ok1,
-    ok1 ? "✓ Correct: nominal uses current prices; real uses base prices, so price-only changes don’t change real." :
-          "Not quite. If only prices rise, nominal rises; real (base prices) does not; deflator rises."
+    ok1 ? "✓ Correct: nominal uses current prices; real uses base-year prices, so price-only changes don’t change real." :
+          "Not quite. If only prices rise (quantities fixed), nominal rises but real (base-year prices) is unchanged."
   );
   setFeedback(els.fb_q2, ok2,
-    ok2 ? "✓ Correct: higher quantities raise both nominal and real; price level (deflator) stays about the same." :
-          "Not quite. If only quantities rise, both nominal and real rise; deflator stays roughly unchanged."
+    ok2 ? "✓ Correct: higher quantities raise both nominal and real when prices are fixed." :
+          "Not quite. If only quantities rise (prices fixed), both nominal and real rise."
   );
   setFeedback(els.fb_q3, ok3,
-    ok3 ? "✓ Correct: if real is flat, the rise in nominal is mainly prices (inflation)." :
-          "Not quite. Nominal up with real flat points to higher prices, not higher quantities."
+    ok3 ? "✓ Correct: nominal up with real flat points to higher prices (not higher quantities)." :
+          "Not quite. If real is flat, the rise in nominal is mainly prices."
   );
 
   const allAnswered = (a1 && a2 && a3);
@@ -152,13 +155,14 @@ function checkQuiz() {
   if (allCorrect) {
     if (els.quizStatus) els.quizStatus.textContent = "Unlocked ✓ Now explore with shocks and sliders.";
     unlockOutputs();
-    setStatus("Unlocked. Now experiment: apply price-only vs quantity-only shocks and compare nominal vs real.");
+    setStatus("Unlocked. Try price-only vs quantity-only changes and compare nominal vs real.");
   } else {
     if (els.quizStatus) els.quizStatus.textContent = "Not yet—fix the incorrect items and try again.";
     lockOutputs();
   }
 }
 
+/* ---------- Inputs binding ---------- */
 function bindPair(rangeId, numberId, getVal, setVal) {
   const r = document.getElementById(rangeId);
   const n = document.getElementById(numberId);
@@ -168,7 +172,10 @@ function bindPair(rangeId, numberId, getVal, setVal) {
     r.value = vv;
     n.value = vv;
     setVal(vv);
-    if (outputsUnlocked) updateAll();
+    if (outputsUnlocked) {
+      updateAll();
+      refreshExitPrompts();
+    }
   }
 
   r.addEventListener("input", () => syncFrom(r.value));
@@ -188,9 +195,9 @@ function setupBindings() {
   }
 }
 
+/* ---------- Computation ---------- */
 function computeSeries() {
   const b = Number(els.baseYear.value);
-
   const basePrices = { pA: state[b].pA, pB: state[b].pB };
 
   const nominal = [];
@@ -213,6 +220,7 @@ function computeSeries() {
   return { nominal, real, deflator, realGrowth, infl };
 }
 
+/* ---------- Rendering ---------- */
 function updateTable(series) {
   const { nominal, real, deflator, realGrowth, infl } = series;
 
@@ -288,26 +296,7 @@ function updateAll() {
   completeRubric();
 }
 
-function applyInflationShock() {
-  const factor = 1.25;
-  for (let t = 1; t < 3; t++) {
-    state[t].pA = Math.min(50, Math.round(state[t].pA * factor));
-    state[t].pB = Math.min(50, Math.round(state[t].pB * factor));
-  }
-  syncUIFromState();
-  setStatus("Applied an inflation shock: prices increased in Years 2–3 (quantities unchanged).");
-}
-
-function applyQuantityShock() {
-  const factor = 1.20;
-  for (let t = 1; t < 3; t++) {
-    state[t].qA = Math.min(200, Math.round(state[t].qA * factor));
-    state[t].qB = Math.min(200, Math.round(state[t].qB * factor));
-  }
-  syncUIFromState();
-  setStatus("Applied a quantity shock: quantities increased in Years 2–3 (prices unchanged).");
-}
-
+/* ---------- Shocks ---------- */
 function syncUIFromState() {
   for (let t = 0; t < 3; t++) {
     const pairs = [
@@ -317,31 +306,132 @@ function syncUIFromState() {
       [`qB${t}_r`, `qB${t}_n`, state[t].qB]
     ];
     for (const [rid, nid, val] of pairs) {
-      const r = document.getElementById(rid);
-      const n = document.getElementById(nid);
-      r.value = val;
-      n.value = val;
+      document.getElementById(rid).value = val;
+      document.getElementById(nid).value = val;
     }
   }
   updateAll();
+  refreshExitPrompts();
 }
 
+function applyInflationShock() {
+  const factor = 1.25;
+  for (let t = 1; t < 3; t++) {
+    state[t].pA = Math.min(50, Math.round(state[t].pA * factor));
+    state[t].pB = Math.min(50, Math.round(state[t].pB * factor));
+  }
+  syncUIFromState();
+  setStatus("Applied a price-only shock in Years 2–3 (quantities unchanged).");
+}
+
+function applyQuantityShock() {
+  const factor = 1.20;
+  for (let t = 1; t < 3; t++) {
+    state[t].qA = Math.min(200, Math.round(state[t].qA * factor));
+    state[t].qB = Math.min(200, Math.round(state[t].qB * factor));
+  }
+  syncUIFromState();
+  setStatus("Applied a quantity-only shock in Years 2–3 (prices unchanged).");
+}
+
+/* ---------- Exit Ticket ---------- */
+function clearExit() {
+  clearRadios(["e1","e2"]);
+  if (els.exitStatus) els.exitStatus.textContent = "";
+  [els.fb_e1, els.fb_e2].forEach(x => {
+    if (!x) return;
+    x.textContent = "";
+    x.classList.remove("good","bad");
+  });
+}
+
+function refreshExitPrompts() {
+  if (!outputsUnlocked) return;
+
+  const b = Number(els.baseYear.value);
+  const baseLabel = YEARS[b];
+
+  // pick a non-base year label for the contrast
+  const nonBase = (b + 1) % 3;
+  const nonBaseLabel = YEARS[nonBase];
+
+  if (els.exitQ1Title) {
+    els.exitQ1Title.textContent =
+      `1) Real GDP uses base-year prices. If you increase prices in the base year (${baseLabel}) only (quantities fixed), what happens to Real GDP across years?`;
+  }
+
+  // Scenario-specific: compare real GDP from Year 1 to Year 2 (given current base year)
+  const series = computeSeries();
+  const r0 = series.real[0];
+  const r1 = series.real[1];
+  let trend = "unchanged";
+  if (r1 > r0 * 1.001) trend = "increases";
+  if (r1 < r0 * 0.999) trend = "decreases";
+
+  if (els.exitQ2Title) {
+    els.exitQ2Title.textContent =
+      `2) Using the current base year (${baseLabel}), from Year 1 to Year 2, Real GDP mostly:`;
+  }
+
+  // store correct answers on the DOM for simplicity
+  // e1 correct: Real GDP increases in all years when base-year prices rise
+  // e2 correct depends on computed trend
+  els.exitCard.dataset.e1 = "a";
+  els.exitCard.dataset.e2 = (trend === "increases") ? "a" : (trend === "decreases") ? "b" : "c";
+}
+
+function checkExit() {
+  if (!outputsUnlocked) return;
+
+  const a1 = getSelected("e1");
+  const a2 = getSelected("e2");
+
+  if (!a1 || !a2) {
+    if (els.exitStatus) els.exitStatus.textContent = "Answer both exit questions, then check again.";
+    return;
+  }
+
+  const ans1 = els.exitCard.dataset.e1;
+  const ans2 = els.exitCard.dataset.e2;
+
+  const ok1 = (a1 === ans1);
+  const ok2 = (a2 === ans2);
+
+  setFeedback(els.fb_e1, ok1,
+    ok1
+      ? "✓ Correct: Real GDP uses base-year prices, so changing base-year prices changes Real GDP in every year (given quantities)."
+      : "Not quite. Because Real GDP uses base-year prices, changing the base-year prices affects Real GDP in every year."
+  );
+
+  setFeedback(els.fb_e2, ok2,
+    ok2
+      ? "✓ Correct for this scenario (given your chosen base year and current quantities)."
+      : "Not quite. Look at the Real GDP column (base-year prices) for Year 1 vs Year 2."
+  );
+
+  if (els.exitStatus) {
+    els.exitStatus.textContent = (ok1 && ok2) ? "Exit ticket complete ✓" : "Not yet—fix the incorrect item(s) and try again.";
+  }
+}
+
+/* ---------- Scenario control ---------- */
 function newScenario() {
   scenarioSnapshot = generateScenario();
   state = scenarioSnapshot.map(y => ({ ...y }));
-  resetRubric();
   syncUIFromState();
-  clearQuiz(); // re-lock outputs and clear answers
+  clearPredictQuiz();
+  clearExit();
 }
 
 function resetToScenario() {
   if (!scenarioSnapshot) return;
   state = scenarioSnapshot.map(y => ({ ...y }));
-  resetRubric();
   syncUIFromState();
-  clearQuiz(); // re-lock outputs and clear answers
+  clearPredictQuiz();
+  clearExit();
 }
 
+/* ---------- Init ---------- */
 function init() {
   scenarioSnapshot = generateScenario();
   state = scenarioSnapshot.map(y => ({ ...y }));
@@ -352,22 +442,28 @@ function init() {
     resetRubric();
     if (outputsUnlocked) {
       updateAll();
+      refreshExitPrompts();
       setStatus("Base year changed. Real GDP recalculated using the new base-year prices.");
     }
   });
 
   els.scenarioBtn.addEventListener("click", newScenario);
   els.resetBtn.addEventListener("click", resetToScenario);
+
   els.inflationShockBtn.addEventListener("click", () => { if (outputsUnlocked) applyInflationShock(); });
   els.quantityShockBtn.addEventListener("click", () => { if (outputsUnlocked) applyQuantityShock(); });
 
-  // quiz buttons
-  els.checkQuizBtn.addEventListener("click", checkQuiz);
-  els.resetQuizBtn.addEventListener("click", clearQuiz);
+  // Predict quiz buttons
+  els.checkQuizBtn.addEventListener("click", checkPredictQuiz);
+  els.resetQuizBtn.addEventListener("click", clearPredictQuiz);
+
+  // Exit ticket buttons
+  els.checkExitBtn.addEventListener("click", checkExit);
+  els.resetExitBtn.addEventListener("click", clearExit);
 
   // start locked
-  clearQuiz();
-  setStatus("Answer the prediction questions to unlock the results.");
+  clearPredictQuiz();
+  clearExit();
 }
 
 init();
