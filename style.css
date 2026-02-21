@@ -1,7 +1,464 @@
+:root{
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: "Source Serif 4", ui-serif, Georgia, "Times New Roman", serif;
+
+  /* Soft academic palette (warm paper) */
+  --paper: #f6f2ea;
+  --panel: #ffffff;
+  --ink: #1f2937;
+  --ink-2: #374151;
+  --muted: #6b7280;
+  --line: #e7dfd2;
+  --line-2: #d9cfbf;
+  --shadow: 0 1px 2px rgba(17,24,39,0.06), 0 10px 24px rgba(17,24,39,0.06);
+
+  /* Accent */
+  --accent: #2f5d7c;
+  --focus: #2563eb;
+
+  /* Bucket accents (used across labs) */
+  --gdp: #2f5d7c;
+  --gnp: #3b7a57;
+  --both: #6b5ca5;
+  --neither: #8b5a2b;
+
+  /* Feedback */
+  --good: #1b7f4b;
+  --bad: #b42318;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.container{
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 18px 18px;
+}
+
+/* ---------------------------------------------------------
+   Header
+--------------------------------------------------------- */
+.page-header{
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0));
+}
+
+.header-inner{
+  display:grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  align-items: start;
+  padding-top: 22px;
+  padding-bottom: 14px;
+}
+@media (max-width: 980px){
+  .header-inner{ grid-template-columns: 1fr; }
+}
+
+.kicker{
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+h1{
+  font-family: var(--font-serif);
+  font-size: 36px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.sub{
+  margin: 10px 0 0 0;
+  color: var(--ink-2);
+  line-height: 1.55;
+  max-width: 82ch;
+}
+
+.howto{
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.70);
+  padding: 10px 12px;
+}
+.howto summary{
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+}
+.howto-body{
+  margin-top: 10px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.howto-body ul{ margin: 0 0 8px 18px; }
+.howto-note{ margin: 0; color: var(--muted); }
+
+/* ---------------------------------------------------------
+   Controls
+--------------------------------------------------------- */
+.controls-card{
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.controls-top{
+  display:flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.control label{
+  display:block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+select{
+  width: 180px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  padding: 10px 10px;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: #fff;
+}
+
+.controls-actions{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn{
+  border: 1px solid var(--line-2);
+  background: #fff;
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.06s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.btn:hover{ background: rgba(47,93,124,0.06); border-color: rgba(47,93,124,0.35); }
+.btn:active{ transform: translateY(1px); }
+
+.btn.primary{
+  background: rgba(47,93,124,0.10);
+  border-color: rgba(47,93,124,0.35);
+}
+.btn.primary:hover{ background: rgba(47,93,124,0.14); }
+
+.btn.subtle{
+  background: rgba(139,90,43,0.08);
+  border-color: rgba(139,90,43,0.25);
+}
+.btn.subtle:hover{ background: rgba(139,90,43,0.12); }
+
+.btn:disabled{
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.status{
+  margin-top: 10px;
+  min-height: 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------
+   Main layout / Panels
+--------------------------------------------------------- */
+.main-grid{
+  display:grid;
+  grid-template-columns: 1.05fr 1.55fr;
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+}
+@media (max-width: 980px){
+  .main-grid{ grid-template-columns: 1fr; }
+}
+
+.panel{
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.panel-head{
+  display:flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+h2{
+  margin: 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.panel-sub{
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------
+   Rubric strip (shared)
+--------------------------------------------------------- */
+.rubric{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+@media (max-width: 650px){
+  .rubric{ grid-template-columns: 1fr; }
+}
+
+.rubric-item{
+  display:flex;
+  gap: 10px;
+  align-items:flex-start;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(246,242,234,0.55);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.rubric-icon{
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-weight: 800;
+  color: var(--muted);
+  border: 1px solid var(--line-2);
+  background: #fff;
+  flex: 0 0 26px;
+  margin-top: 2px;
+}
+
+.rubric-title{
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.rubric-sub{
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.35;
+}
+
+.rubric-item.done{
+  border-color: rgba(27,127,75,0.35);
+  background: rgba(27,127,75,0.08);
+}
+.rubric-item.done .rubric-icon{
+  border-color: rgba(27,127,75,0.45);
+  color: #fff;
+  background: var(--good);
+}
+
+/* ---------------------------------------------------------
+   Footer
+--------------------------------------------------------- */
+.footer{
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+.footer-inner{
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.footer-note{ opacity: 0.95; }
+
+code{
+  background: rgba(255,255,255,0.8);
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+/* Focus */
+:focus-visible{
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   Nominal vs Real GDP lab (inputs + table + charts)
+   ========================================================= */
+.inputs-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.year-card{
+  border: 1px solid var(--line);
+  background: rgba(246,242,234,0.35);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.year-title{
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.good-block{
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.good-title{
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+
+.field{
+  margin-bottom: 10px;
+}
+
+.field label{
+  display:block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.field-row{
+  display:grid;
+  grid-template-columns: 1fr 90px;
+  gap: 10px;
+  align-items:center;
+}
+
+input[type="range"]{
+  width: 100%;
+}
+
+input[type="number"]{
+  width: 90px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: #fff;
+}
+
+/* Table */
+.table-wrap{
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(246,242,234,0.35);
+}
+
+.gdp-table{
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 780px;
+}
+
+.gdp-table th, .gdp-table td{
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.gdp-table thead th{
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(255,255,255,0.65);
+}
+
+.gdp-table tbody tr:last-child td{
+  border-bottom: none;
+}
+
+.charts{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.chart-card{
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(246,242,234,0.35);
+  padding: 12px;
+}
+
+.chart-title{
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.explain{
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
 /* =========================================================
    MCQ "Predict first" block + locked outputs
    ========================================================= */
-
 .quiz-card{
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -72,7 +529,7 @@
 }
 
 .locked-wrap.locked{
-  pointer-events: none; /* block interaction */
+  pointer-events: none;
 }
 
 .locked-wrap.locked .rubric,
