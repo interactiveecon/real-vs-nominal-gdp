@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nominal vs Real GDP Lab</title>
+
+  <!-- Inter (body) + Source Serif 4 (headings) for soft academic feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="page-header">
+    <div class="container header-inner">
+      <div class="title-block">
+        <div class="kicker">Macroeconomics Practice Lab</div>
+        <h1>Nominal vs Real GDP</h1>
+        <p class="sub">
+          Adjust prices and quantities for two goods over three years. The lab computes
+          <strong>Nominal GDP</strong>, <strong>Real GDP</strong> (base-year prices), and the <strong>GDP Deflator</strong>.
+          Your goal: identify whether changes are driven by <strong>prices</strong>, <strong>quantities</strong>, or both.
+        </p>
+
+        <details class="howto">
+          <summary>Key formulas</summary>
+          <div class="howto-body">
+            <ul>
+              <li><strong>Nominal GDP</strong> in year <em>t</em>: \(\sum_i P_{i,t}Q_{i,t}\)</li>
+              <li><strong>Real GDP</strong> (base year <em>b</em>) in year <em>t</em>: \(\sum_i P_{i,b}Q_{i,t}\)</li>
+              <li><strong>GDP Deflator</strong>: \(\frac{\text{Nominal}}{\text{Real}}\times 100\)</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+
+      <div class="controls-card">
+        <div class="controls-top">
+          <div class="control">
+            <label for="baseYear">Base year for Real GDP</label>
+            <select id="baseYear">
+              <option value="0" selected>Year 1</option>
+              <option value="1">Year 2</option>
+              <option value="2">Year 3</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label for="scenarioBtn">Scenario</label>
+            <button id="scenarioBtn" class="btn primary">New Scenario</button>
+          </div>
+        </div>
+
+        <div class="controls-actions">
+          <button id="inflationShockBtn" class="btn">Inflation shock (prices ↑)</button>
+          <button id="quantityShockBtn" class="btn">Quantity shock (quantities ↑)</button>
+          <button id="resetBtn" class="btn subtle">Reset to scenario</button>
+        </div>
+
+        <div id="status" class="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-grid">
+    <!-- INPUTS -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Inputs</h2>
+        <p class="panel-sub">Edit values below (sliders + number boxes). Changes update instantly.</p>
+      </div>
+
+      <div class="inputs-grid">
+        <!-- YEAR 1 -->
+        <div class="year-card">
+          <div class="year-title">Year 1</div>
+
+          <div class="good-block">
+            <div class="good-title">Good A</div>
+            <div class="field">
+              <label>Price (P)</label>
+              <div class="field-row">
+                <input type="range" id="pA0_r" min="1" max="50" step="1" />
+                <input type="number" id="pA0_n" min="1" max="50" step="1" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Quantity (Q)</label>
+              <div class="field-row">
+                <input type="range" id="qA0_r" min="0" max="200" step="1" />
+                <input type="number" id="qA0_n" min="0" max="200" step="1" />
+              </div>
+            </div>
+          </div>
+
+          <div class="good-block">
+            <div class="good-title">Good B</div>
+            <div class="field">
+              <label>Price (P)</label>
+              <div class="field-row">
+                <input type="range" id="pB0_r" min="1" max="50" step="1" />
+                <input type="number" id="pB0_n" min="1" max="50" step="1" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Quantity (Q)</label>
+              <div class="field-row">
+                <input type="range" id="qB0_r" min="0" max="200" step="1" />
+                <input type="number" id="qB0_n" min="0" max="200" step="1" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- YEAR 2 -->
+        <div class="year-card">
+          <div class="year-title">Year 2</div>
+
+          <div class="good-block">
+            <div class="good-title">Good A</div>
+            <div class="field">
+              <label>Price (P)</label>
+              <div class="field-row">
+                <input type="range" id="pA1_r" min="1" max="50" step="1" />
+                <input type="number" id="pA1_n" min="1" max="50" step="1" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Quantity (Q)</label>
+              <div class="field-row">
+                <input type="range" id="qA1_r" min="0" max="200" step="1" />
+                <input type="number" id="qA1_n" min="0" max="200" step="1" />
+              </div>
+            </div>
+          </div>
+
+          <div class="good-block">
+            <div class="good-title">Good B</div>
+            <div class="field">
+              <label>Price (P)</label>
+              <div class="field-row">
+                <input type="range" id="pB1_r" min="1" max="50" step="1" />
+                <input type="number" id="pB1_n" min="1" max="50" step="1" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Quantity (Q)</label>
+              <div class="field-row">
+                <input type="range" id="qB1_r" min="0" max="200" step="1" />
+                <input type="number" id="qB1_n" min="0" max="200" step="1" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- YEAR 3 -->
+        <div class="year-card">
+          <div class="year-title">Year 3</div>
+
+          <div class="good-block">
+            <div class="good-title">Good A</div>
+            <div class="field">
+              <label>Price (P)</label>
+              <div class="field-row">
+                <input type="range" id="pA2_r" min="1" max="50" step="1" />
+                <input type="number" id="pA2_n" min="1" max="50" step="1" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Quantity (Q)</label>
+              <div class="field-row">
+                <input type="range" id="qA2_r" min="0" max="200" step="1" />
+                <input type="number" id="qA2_n" min="0" max="200" step="1" />
+              </div>
+            </div>
+          </div>
+
+          <div class="good-block">
+            <div class="good-title">Good B</div>
+            <div class="field">
+              <label>Price (P)</label>
+              <div class="field-row">
+                <input type="range" id="pB2_r" min="1" max="50" step="1" />
+                <input type="number" id="pB2_n" min="1" max="50" step="1" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Quantity (Q)</label>
+              <div class="field-row">
+                <input type="range" id="qB2_r" min="0" max="200" step="1" />
+                <input type="number" id="qB2_n" min="0" max="200" step="1" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OUTPUTS -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Outputs</h2>
+        <p class="panel-sub">Nominal vs Real GDP and the implied deflator.</p>
+      </div>
+
+      <div class="rubric" aria-label="Core ideas checklist">
+        <div class="rubric-item" id="ruleNom">
+          <span class="rubric-icon" aria-hidden="true">○</span>
+          <div class="rubric-text">
+            <div class="rubric-title">Nominal</div>
+            <div class="rubric-sub">Uses current prices</div>
+          </div>
+        </div>
+        <div class="rubric-item" id="ruleReal">
+          <span class="rubric-icon" aria-hidden="true">○</span>
+          <div class="rubric-text">
+            <div class="rubric-title">Real</div>
+            <div class="rubric-sub">Uses base-year prices</div>
+          </div>
+        </div>
+        <div class="rubric-item" id="ruleDef">
+          <span class="rubric-icon" aria-hidden="true">○</span>
+          <div class="rubric-text">
+            <div class="rubric-title">Deflator</div>
+            <div class="rubric-sub">Nominal ÷ Real × 100</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="gdp-table">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Nominal GDP</th>
+              <th>Real GDP (base-year prices)</th>
+              <th>GDP Deflator</th>
+              <th>Real growth</th>
+              <th>Inflation (deflator)</th>
+            </tr>
+          </thead>
+          <tbody id="outTable"></tbody>
+        </table>
+      </div>
+
+      <div class="charts">
+        <div class="chart-card">
+          <div class="chart-title">Nominal GDP</div>
+          <canvas id="chartNom"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Real GDP</div>
+          <canvas id="chartReal"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">GDP Deflator</div>
+          <canvas id="chartDef"></canvas>
+        </div>
+      </div>
+
+      <div id="explain" class="explain"></div>
+    </section>
+  </main>
+
+  <footer class="container footer">
+    <div class="footer-inner">
+      <div class="footer-note">Tip: If only prices rise, nominal rises but real doesn’t (base year fixed prices).</div>
+      <div class="footer-note">Works on GitHub Pages (static JS + Chart.js CDN).</div>
+    </div>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
