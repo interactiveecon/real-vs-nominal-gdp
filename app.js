@@ -15,7 +15,18 @@ const els = {
   // rubric
   ruleNom: document.getElementById("ruleNom"),
   ruleReal: document.getElementById("ruleReal"),
-  ruleDef: document.getElementById("ruleDef")
+  ruleDef: document.getElementById("ruleDef"),
+
+  // quiz
+  checkQuizBtn: document.getElementById("checkQuizBtn"),
+  resetQuizBtn: document.getElementById("resetQuizBtn"),
+  quizStatus: document.getElementById("quizStatus"),
+  fb_q1: document.getElementById("fb_q1"),
+  fb_q2: document.getElementById("fb_q2"),
+  fb_q3: document.getElementById("fb_q3"),
+
+  // lock
+  lockedWrap: document.getElementById("lockedWrap")
 };
 
 // App state: for each year, store pA,qA,pB,qB
@@ -27,20 +38,20 @@ let chartNom = null;
 let chartReal = null;
 let chartDef = null;
 
+// Quiz correctness gate
+let outputsUnlocked = false;
+
 function setStatus(msg) {
   if (els.status) els.status.textContent = msg;
 }
 
 function money(x) {
-  // not actual dollars; just formatting
   return x.toFixed(0);
 }
-
 function pct(x) {
   if (!isFinite(x)) return "—";
   return (100 * x).toFixed(1) + "%";
 }
-
 function defl(x) {
   if (!isFinite(x)) return "—";
   return x.toFixed(1);
@@ -62,6 +73,92 @@ function completeRubric() {
   });
 }
 
+function lockOutputs() {
+  outputsUnlocked = false;
+  if (els.lockedWrap) els.lockedWrap.classList.add("locked");
+  resetRubric();
+}
+
+function unlockOutputs() {
+  outputsUnlocked = true;
+  if (els.lockedWrap) els.lockedWrap.classList.remove("locked");
+  // Update outputs immediately once unlocked
+  updateAll();
+}
+
+function getSelected(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : null;
+}
+
+function setFeedback(el, ok, msg) {
+  if (!el) return;
+  el.classList.remove("good", "bad");
+  el.classList.add(ok ? "good" : "bad");
+  el.textContent = msg;
+}
+
+function clearQuiz() {
+  ["q1","q2","q3"].forEach(q => {
+    document.querySelectorAll(`input[name="${q}"]`).forEach(r => { r.checked = false; });
+  });
+  if (els.quizStatus) els.quizStatus.textContent = "";
+  if (els.fb_q1) els.fb_q1.textContent = "";
+  if (els.fb_q2) els.fb_q2.textContent = "";
+  if (els.fb_q3) els.fb_q3.textContent = "";
+  [els.fb_q1, els.fb_q2, els.fb_q3].forEach(x => x && x.classList.remove("good","bad"));
+  lockOutputs();
+  setStatus("Answer the prediction questions to unlock the results.");
+}
+
+function checkQuiz() {
+  // Correct answers:
+  // q1: prices only -> nominal up, real unchanged, deflator up (b)
+  // q2: quantities only -> nominal up, real up, deflator unchanged (a)
+  // q3: nominal up, real flat -> higher prices (b)
+  const ans = { q1: "b", q2: "a", q3: "b" };
+
+  const a1 = getSelected("q1");
+  const a2 = getSelected("q2");
+  const a3 = getSelected("q3");
+
+  let ok1 = (a1 === ans.q1);
+  let ok2 = (a2 === ans.q2);
+  let ok3 = (a3 === ans.q3);
+
+  // Feedback messages (short + rule-based)
+  setFeedback(els.fb_q1, ok1,
+    ok1 ? "✓ Correct: nominal uses current prices; real uses base prices, so price-only changes don’t change real." :
+          "Not quite. If only prices rise, nominal rises; real (base prices) does not; deflator rises."
+  );
+  setFeedback(els.fb_q2, ok2,
+    ok2 ? "✓ Correct: higher quantities raise both nominal and real; price level (deflator) stays about the same." :
+          "Not quite. If only quantities rise, both nominal and real rise; deflator stays roughly unchanged."
+  );
+  setFeedback(els.fb_q3, ok3,
+    ok3 ? "✓ Correct: if real is flat, the rise in nominal is mainly prices (inflation)." :
+          "Not quite. Nominal up with real flat points to higher prices, not higher quantities."
+  );
+
+  const allAnswered = (a1 && a2 && a3);
+  const allCorrect = (ok1 && ok2 && ok3);
+
+  if (!allAnswered) {
+    if (els.quizStatus) els.quizStatus.textContent = "Answer all three questions, then check again.";
+    lockOutputs();
+    return;
+  }
+
+  if (allCorrect) {
+    if (els.quizStatus) els.quizStatus.textContent = "Unlocked ✓ Now explore with shocks and sliders.";
+    unlockOutputs();
+    setStatus("Unlocked. Now experiment: apply price-only vs quantity-only shocks and compare nominal vs real.");
+  } else {
+    if (els.quizStatus) els.quizStatus.textContent = "Not yet—fix the incorrect items and try again.";
+    lockOutputs();
+  }
+}
+
 function bindPair(rangeId, numberId, getVal, setVal) {
   const r = document.getElementById(rangeId);
   const n = document.getElementById(numberId);
@@ -71,13 +168,12 @@ function bindPair(rangeId, numberId, getVal, setVal) {
     r.value = vv;
     n.value = vv;
     setVal(vv);
-    updateAll();
+    if (outputsUnlocked) updateAll();
   }
 
   r.addEventListener("input", () => syncFrom(r.value));
   n.addEventListener("input", () => syncFrom(n.value));
 
-  // initialize
   const initV = getVal();
   r.value = initV;
   n.value = initV;
@@ -93,12 +189,9 @@ function setupBindings() {
 }
 
 function computeSeries() {
-  const b = Number(els.baseYear.value); // base year index
+  const b = Number(els.baseYear.value);
 
-  const basePrices = {
-    pA: state[b].pA,
-    pB: state[b].pB
-  };
+  const basePrices = { pA: state[b].pA, pB: state[b].pB };
 
   const nominal = [];
   const real = [];
@@ -114,7 +207,6 @@ function computeSeries() {
     deflator.push(def);
   }
 
-  // growth rates
   const realGrowth = [NaN, (real[1] - real[0]) / real[0], (real[2] - real[1]) / real[1]];
   const infl = [NaN, (deflator[1] - deflator[0]) / deflator[0], (deflator[2] - deflator[1]) / deflator[1]];
 
@@ -142,21 +234,12 @@ function updateTable(series) {
 function makeChart(ctx, label, data) {
   return new Chart(ctx, {
     type: "line",
-    data: {
-      labels: YEARS,
-      datasets: [{ label, data }]
-    },
+    data: { labels: YEARS, datasets: [{ label, data }] },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { enabled: true }
-      },
-      scales: {
-        x: { grid: { display: false } },
-        y: { grid: { display: true } }
-      }
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false } }, y: { grid: { display: true } } }
     }
   });
 }
@@ -181,24 +264,23 @@ function updateCharts(series) {
 }
 
 function updateExplanation(series) {
-  const { nominal, real, deflator, realGrowth, infl } = series;
-
+  const { realGrowth, infl } = series;
   const b = Number(els.baseYear.value);
   const baseLabel = YEARS[b];
 
   const msg =
-    `Base year is <strong>${baseLabel}</strong>. Real GDP uses prices from the base year and current quantities. ` +
-    `If nominal GDP rises but real GDP is flat, the change is mostly <strong>prices</strong> (inflation). ` +
-    `If real GDP rises, the change reflects higher <strong>quantities</strong> (more real production). ` +
-    `The GDP deflator summarizes the overall price level for domestically produced output.`;
+    `Base year is <strong>${baseLabel}</strong>. Real GDP uses base-year prices and current quantities. ` +
+    `If nominal rises but real is flat, the change is mostly <strong>prices</strong>. ` +
+    `If real rises, the economy produced more <strong>stuff</strong> (quantities).`;
 
-  const y2 = `From Year 1 → Year 2: real growth ${isFinite(realGrowth[1]) ? pct(realGrowth[1]) : "—"}, deflator inflation ${isFinite(infl[1]) ? pct(infl[1]) : "—"}.`;
-  const y3 = `From Year 2 → Year 3: real growth ${isFinite(realGrowth[2]) ? pct(realGrowth[2]) : "—"}, deflator inflation ${isFinite(infl[2]) ? pct(infl[2]) : "—"}.`;
+  const y2 = `Year 1 → Year 2: real growth ${isFinite(realGrowth[1]) ? pct(realGrowth[1]) : "—"}, deflator inflation ${isFinite(infl[1]) ? pct(infl[1]) : "—"}.`;
+  const y3 = `Year 2 → Year 3: real growth ${isFinite(realGrowth[2]) ? pct(realGrowth[2]) : "—"}, deflator inflation ${isFinite(infl[2]) ? pct(infl[2]) : "—"}.`;
 
   els.explain.innerHTML = `${msg}<br><br><strong>${y2}</strong><br><strong>${y3}</strong>`;
 }
 
 function updateAll() {
+  if (!outputsUnlocked) return;
   const series = computeSeries();
   updateTable(series);
   updateCharts(series);
@@ -207,19 +289,16 @@ function updateAll() {
 }
 
 function applyInflationShock() {
-  // Multiply prices in Year 2 and Year 3 by a factor; keep quantities unchanged.
   const factor = 1.25;
   for (let t = 1; t < 3; t++) {
     state[t].pA = Math.min(50, Math.round(state[t].pA * factor));
     state[t].pB = Math.min(50, Math.round(state[t].pB * factor));
   }
-  // sync inputs to state
   syncUIFromState();
   setStatus("Applied an inflation shock: prices increased in Years 2–3 (quantities unchanged).");
 }
 
 function applyQuantityShock() {
-  // Multiply quantities in Year 2 and Year 3 by a factor; keep prices unchanged.
   const factor = 1.20;
   for (let t = 1; t < 3; t++) {
     state[t].qA = Math.min(200, Math.round(state[t].qA * factor));
@@ -230,8 +309,6 @@ function applyQuantityShock() {
 }
 
 function syncUIFromState() {
-  // Write state values into range + number inputs without rebinding.
-  // (We set both and then call updateAll.)
   for (let t = 0; t < 3; t++) {
     const pairs = [
       [`pA${t}_r`, `pA${t}_n`, state[t].pA],
@@ -251,11 +328,10 @@ function syncUIFromState() {
 
 function newScenario() {
   scenarioSnapshot = generateScenario();
-  // deep copy
   state = scenarioSnapshot.map(y => ({ ...y }));
   resetRubric();
   syncUIFromState();
-  setStatus("New scenario generated. Try changing only prices or only quantities and compare nominal vs real.");
+  clearQuiz(); // re-lock outputs and clear answers
 }
 
 function resetToScenario() {
@@ -263,11 +339,10 @@ function resetToScenario() {
   state = scenarioSnapshot.map(y => ({ ...y }));
   resetRubric();
   syncUIFromState();
-  setStatus("Reset to the original scenario.");
+  clearQuiz(); // re-lock outputs and clear answers
 }
 
 function init() {
-  // initial scenario
   scenarioSnapshot = generateScenario();
   state = scenarioSnapshot.map(y => ({ ...y }));
 
@@ -275,18 +350,24 @@ function init() {
 
   els.baseYear.addEventListener("change", () => {
     resetRubric();
-    updateAll();
-    setStatus("Base year changed. Real GDP recalculated using the new base-year prices.");
+    if (outputsUnlocked) {
+      updateAll();
+      setStatus("Base year changed. Real GDP recalculated using the new base-year prices.");
+    }
   });
 
   els.scenarioBtn.addEventListener("click", newScenario);
   els.resetBtn.addEventListener("click", resetToScenario);
-  els.inflationShockBtn.addEventListener("click", applyInflationShock);
-  els.quantityShockBtn.addEventListener("click", applyQuantityShock);
+  els.inflationShockBtn.addEventListener("click", () => { if (outputsUnlocked) applyInflationShock(); });
+  els.quantityShockBtn.addEventListener("click", () => { if (outputsUnlocked) applyQuantityShock(); });
 
-  resetRubric();
-  updateAll();
-  setStatus("Ready. Adjust prices/quantities and watch nominal vs real respond.");
+  // quiz buttons
+  els.checkQuizBtn.addEventListener("click", checkQuiz);
+  els.resetQuizBtn.addEventListener("click", clearQuiz);
+
+  // start locked
+  clearQuiz();
+  setStatus("Answer the prediction questions to unlock the results.");
 }
 
 init();
