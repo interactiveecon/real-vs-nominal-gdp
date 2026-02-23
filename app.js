@@ -5,8 +5,6 @@ const YEARS = ["Year 1", "Year 2", "Year 3"];
 const els = {
   baseYear: document.getElementById("baseYear"),
   scenarioBtn: document.getElementById("scenarioBtn"),
-  inflationShockBtn: document.getElementById("inflationShockBtn"),
-  quantityShockBtn: document.getElementById("quantityShockBtn"),
   resetBtn: document.getElementById("resetBtn"),
   status: document.getElementById("status"),
   outTable: document.getElementById("outTable"),
@@ -17,7 +15,7 @@ const els = {
   ruleReal: document.getElementById("ruleReal"),
   ruleDef: document.getElementById("ruleDef"),
 
-  // quiz (predict-first)
+  // predict-first quiz
   checkQuizBtn: document.getElementById("checkQuizBtn"),
   resetQuizBtn: document.getElementById("resetQuizBtn"),
   quizStatus: document.getElementById("quizStatus"),
@@ -42,10 +40,7 @@ const els = {
 let state = null;
 let scenarioSnapshot = null;
 
-let chartNom = null;
-let chartReal = null;
-let chartDef = null;
-
+let chartNR = null;
 let outputsUnlocked = false;
 
 function setStatus(msg) {
@@ -53,8 +48,6 @@ function setStatus(msg) {
 }
 
 function money(x) { return x.toFixed(0); }
-function pct(x) { return isFinite(x) ? (100 * x).toFixed(1) + "%" : "—"; }
-function defl(x) { return isFinite(x) ? x.toFixed(1) : "—"; }
 
 function resetRubric() {
   [els.ruleNom, els.ruleReal, els.ruleDef].filter(Boolean).forEach(el => {
@@ -84,7 +77,7 @@ function unlockOutputs() {
   if (els.lockedWrap) els.lockedWrap.classList.remove("locked");
   if (els.exitCard) els.exitCard.classList.remove("hidden");
   updateAll();
-  refreshExitPrompts(); // make exit questions reflect base year + scenario
+  refreshExitPrompts();
 }
 
 function getSelected(name) {
@@ -116,10 +109,6 @@ function clearPredictQuiz() {
 }
 
 function checkPredictQuiz() {
-  // Correct answers (no deflator references):
-  // q1 prices-only -> nominal ↑, real unchanged (b)
-  // q2 quantities-only -> nominal ↑, real ↑ (a)
-  // q3 nominal ↑, real flat -> higher prices (b)
   const ans = { q1: "b", q2: "a", q3: "b" };
 
   const a1 = getSelected("q1");
@@ -153,9 +142,9 @@ function checkPredictQuiz() {
   }
 
   if (allCorrect) {
-    if (els.quizStatus) els.quizStatus.textContent = "Unlocked ✓ Now explore with shocks and sliders.";
+    if (els.quizStatus) els.quizStatus.textContent = "Unlocked ✓ Now explore by editing prices vs quantities.";
     unlockOutputs();
-    setStatus("Unlocked. Try price-only vs quantity-only changes and compare nominal vs real.");
+    setStatus("Unlocked. Try changing only prices vs only quantities and compare nominal vs real.");
   } else {
     if (els.quizStatus) els.quizStatus.textContent = "Not yet—fix the incorrect items and try again.";
     lockOutputs();
@@ -196,142 +185,94 @@ function setupBindings() {
 }
 
 /* ---------- Computation ---------- */
-function computeSeries() {
+function computeNominalReal() {
   const b = Number(els.baseYear.value);
   const basePrices = { pA: state[b].pA, pB: state[b].pB };
 
   const nominal = [];
   const real = [];
-  const deflator = [];
 
   for (let t = 0; t < 3; t++) {
     const nom = state[t].pA * state[t].qA + state[t].pB * state[t].qB;
     const rea = basePrices.pA * state[t].qA + basePrices.pB * state[t].qB;
-    const def = (rea === 0) ? NaN : (nom / rea) * 100;
-
     nominal.push(nom);
     real.push(rea);
-    deflator.push(def);
   }
-
-  const realGrowth = [NaN, (real[1] - real[0]) / real[0], (real[2] - real[1]) / real[1]];
-  const infl = [NaN, (deflator[1] - deflator[0]) / deflator[0], (deflator[2] - deflator[1]) / deflator[1]];
-
-  return { nominal, real, deflator, realGrowth, infl };
+  return { nominal, real };
 }
 
 /* ---------- Rendering ---------- */
 function updateTable(series) {
-  const { nominal, real, deflator, realGrowth, infl } = series;
+  const { nominal, real } = series;
 
   els.outTable.innerHTML = "";
   for (let t = 0; t < 3; t++) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${YEARS[t]}</td>
+      <td>${state[t].pA}</td><td>${state[t].qA}</td>
+      <td>${state[t].pB}</td><td>${state[t].qB}</td>
       <td>${money(nominal[t])}</td>
       <td>${money(real[t])}</td>
-      <td>${defl(deflator[t])}</td>
-      <td>${t === 0 ? "—" : pct(realGrowth[t])}</td>
-      <td>${t === 0 ? "—" : pct(infl[t])}</td>
     `;
     els.outTable.appendChild(tr);
   }
 }
 
-function makeChart(ctx, label, data) {
+function makeNRChart() {
+  const ctx = document.getElementById("chartNR");
+  const series = computeNominalReal();
+
   return new Chart(ctx, {
     type: "line",
-    data: { labels: YEARS, datasets: [{ label, data }] },
+    data: {
+      labels: YEARS,
+      datasets: [
+        { label: "Nominal GDP", data: series.nominal },
+        { label: "Real GDP", data: series.real }
+      ]
+    },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      plugins: { legend: { display: false } },
-      scales: { x: { grid: { display: false } }, y: { grid: { display: true } } }
+      plugins: {
+        legend: { display: true }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { display: true } }
+      }
     }
   });
 }
 
-function updateCharts(series) {
-  const { nominal, real, deflator } = series;
-
-  if (!chartNom) {
-    chartNom = makeChart(document.getElementById("chartNom"), "Nominal GDP", nominal);
-    chartReal = makeChart(document.getElementById("chartReal"), "Real GDP", real);
-    chartDef = makeChart(document.getElementById("chartDef"), "GDP Deflator", deflator);
+function updateChart(series) {
+  if (!chartNR) {
+    chartNR = makeNRChart();
     return;
   }
-
-  chartNom.data.datasets[0].data = nominal;
-  chartReal.data.datasets[0].data = real;
-  chartDef.data.datasets[0].data = deflator;
-
-  chartNom.update();
-  chartReal.update();
-  chartDef.update();
+  chartNR.data.datasets[0].data = series.nominal;
+  chartNR.data.datasets[1].data = series.real;
+  chartNR.update();
 }
 
 function updateExplanation(series) {
-  const { realGrowth, infl } = series;
   const b = Number(els.baseYear.value);
   const baseLabel = YEARS[b];
 
-  const msg =
+  els.explain.innerHTML =
     `Base year is <strong>${baseLabel}</strong>. Real GDP uses base-year prices and current quantities. ` +
-    `If nominal rises but real is flat, the change is mostly <strong>prices</strong>. ` +
-    `If real rises, the economy produced more <strong>stuff</strong> (quantities).`;
-
-  const y2 = `Year 1 → Year 2: real growth ${isFinite(realGrowth[1]) ? pct(realGrowth[1]) : "—"}, deflator inflation ${isFinite(infl[1]) ? pct(infl[1]) : "—"}.`;
-  const y3 = `Year 2 → Year 3: real growth ${isFinite(realGrowth[2]) ? pct(realGrowth[2]) : "—"}, deflator inflation ${isFinite(infl[2]) ? pct(infl[2]) : "—"}.`;
-
-  els.explain.innerHTML = `${msg}<br><br><strong>${y2}</strong><br><strong>${y3}</strong>`;
+    `Try changing a <em>non–base-year</em> price (e.g., Year 2 price when base year is Year 1): nominal changes, real does not. ` +
+    `Try changing a quantity: both nominal and real change.`;
 }
 
 function updateAll() {
   if (!outputsUnlocked) return;
-  const series = computeSeries();
+  const series = computeNominalReal();
   updateTable(series);
-  updateCharts(series);
+  updateChart(series);
   updateExplanation(series);
   completeRubric();
-}
-
-/* ---------- Shocks ---------- */
-function syncUIFromState() {
-  for (let t = 0; t < 3; t++) {
-    const pairs = [
-      [`pA${t}_r`, `pA${t}_n`, state[t].pA],
-      [`qA${t}_r`, `qA${t}_n`, state[t].qA],
-      [`pB${t}_r`, `pB${t}_n`, state[t].pB],
-      [`qB${t}_r`, `qB${t}_n`, state[t].qB]
-    ];
-    for (const [rid, nid, val] of pairs) {
-      document.getElementById(rid).value = val;
-      document.getElementById(nid).value = val;
-    }
-  }
-  updateAll();
-  refreshExitPrompts();
-}
-
-function applyInflationShock() {
-  const factor = 1.25;
-  for (let t = 1; t < 3; t++) {
-    state[t].pA = Math.min(50, Math.round(state[t].pA * factor));
-    state[t].pB = Math.min(50, Math.round(state[t].pB * factor));
-  }
-  syncUIFromState();
-  setStatus("Applied a price-only shock in Years 2–3 (quantities unchanged).");
-}
-
-function applyQuantityShock() {
-  const factor = 1.20;
-  for (let t = 1; t < 3; t++) {
-    state[t].qA = Math.min(200, Math.round(state[t].qA * factor));
-    state[t].qB = Math.min(200, Math.round(state[t].qB * factor));
-  }
-  syncUIFromState();
-  setStatus("Applied a quantity-only shock in Years 2–3 (prices unchanged).");
 }
 
 /* ---------- Exit Ticket ---------- */
@@ -351,33 +292,42 @@ function refreshExitPrompts() {
   const b = Number(els.baseYear.value);
   const baseLabel = YEARS[b];
 
-  // pick a non-base year label for the contrast
-  const nonBase = (b + 1) % 3;
-  const nonBaseLabel = YEARS[nonBase];
-
   if (els.exitQ1Title) {
     els.exitQ1Title.textContent =
       `1) Real GDP uses base-year prices. If you increase prices in the base year (${baseLabel}) only (quantities fixed), what happens to Real GDP across years?`;
   }
 
-  // Scenario-specific: compare real GDP from Year 1 to Year 2 (given current base year)
-  const series = computeSeries();
-  const r0 = series.real[0];
-  const r1 = series.real[1];
-  let trend = "unchanged";
-  if (r1 > r0 * 1.001) trend = "increases";
-  if (r1 < r0 * 0.999) trend = "decreases";
+  // Exit Q2: classify Year1->Year2 as mostly prices vs quantities vs both
+  // Use a simple, transparent decomposition at base-year prices:
+  // ΔNominal = Σ(P2Q2 - P1Q1)
+  // ΔReal    = Σ(PbQ2 - PbQ1)  (quantity effect at base prices)
+  // Price effect = ΔNominal - (Σ(PbQ2 - PbQ1) using Pb=base prices AND Q's)?? We'll use:
+  // Price-only at current quantities: Σ((P2-P1)*Q2). Quantity-only at base prices: Σ(Pb*(Q2-Q1)).
+  const basePrices = { pA: state[b].pA, pB: state[b].pB };
+
+  const dQ_A = state[1].qA - state[0].qA;
+  const dQ_B = state[1].qB - state[0].qB;
+
+  const qtyEffect = basePrices.pA * dQ_A + basePrices.pB * dQ_B;
+
+  const priceEffect = (state[1].pA - state[0].pA) * state[1].qA + (state[1].pB - state[0].pB) * state[1].qB;
+
+  const absQ = Math.abs(qtyEffect);
+  const absP = Math.abs(priceEffect);
+
+  let correct;
+  if (absQ < 1e-6 && absP < 1e-6) correct = "c";        // nothing changed
+  else if (absP > 1.5 * absQ) correct = "a";            // mostly prices
+  else if (absQ > 1.5 * absP) correct = "b";            // mostly quantities
+  else correct = "c";                                    // both about equally
 
   if (els.exitQ2Title) {
     els.exitQ2Title.textContent =
-      `2) Using the current base year (${baseLabel}), from Year 1 to Year 2, Real GDP mostly:`;
+      `2) From Year 1 → Year 2 (with base year ${baseLabel}), the change in GDP is driven mostly by:`;
   }
 
-  // store correct answers on the DOM for simplicity
-  // e1 correct: Real GDP increases in all years when base-year prices rise
-  // e2 correct depends on computed trend
-  els.exitCard.dataset.e1 = "a";
-  els.exitCard.dataset.e2 = (trend === "increases") ? "a" : (trend === "decreases") ? "b" : "c";
+  els.exitCard.dataset.e1 = "a";   // base-year price changes affect real GDP in all years
+  els.exitCard.dataset.e2 = correct;
 }
 
 function checkExit() {
@@ -399,14 +349,14 @@ function checkExit() {
 
   setFeedback(els.fb_e1, ok1,
     ok1
-      ? "✓ Correct: Real GDP uses base-year prices, so changing base-year prices changes Real GDP in every year (given quantities)."
-      : "Not quite. Because Real GDP uses base-year prices, changing the base-year prices affects Real GDP in every year."
+      ? "✓ Correct: changing base-year prices changes Real GDP in every year (because those prices are used for all years)."
+      : "Not quite. Real GDP uses base-year prices for every year, so changing base-year prices changes Real GDP in every year."
   );
 
   setFeedback(els.fb_e2, ok2,
     ok2
-      ? "✓ Correct for this scenario (given your chosen base year and current quantities)."
-      : "Not quite. Look at the Real GDP column (base-year prices) for Year 1 vs Year 2."
+      ? "✓ Correct for this scenario."
+      : "Not quite. Compare how much quantities changed (at base prices) versus how much prices changed (at Year 2 quantities)."
   );
 
   if (els.exitStatus) {
@@ -415,6 +365,23 @@ function checkExit() {
 }
 
 /* ---------- Scenario control ---------- */
+function syncUIFromState() {
+  for (let t = 0; t < 3; t++) {
+    const pairs = [
+      [`pA${t}_r`, `pA${t}_n`, state[t].pA],
+      [`qA${t}_r`, `qA${t}_n`, state[t].qA],
+      [`pB${t}_r`, `pB${t}_n`, state[t].pB],
+      [`qB${t}_r`, `qB${t}_n`, state[t].qB]
+    ];
+    for (const [rid, nid, val] of pairs) {
+      document.getElementById(rid).value = val;
+      document.getElementById(nid).value = val;
+    }
+  }
+  updateAll();
+  refreshExitPrompts();
+}
+
 function newScenario() {
   scenarioSnapshot = generateScenario();
   state = scenarioSnapshot.map(y => ({ ...y }));
@@ -450,18 +417,12 @@ function init() {
   els.scenarioBtn.addEventListener("click", newScenario);
   els.resetBtn.addEventListener("click", resetToScenario);
 
-  els.inflationShockBtn.addEventListener("click", () => { if (outputsUnlocked) applyInflationShock(); });
-  els.quantityShockBtn.addEventListener("click", () => { if (outputsUnlocked) applyQuantityShock(); });
-
-  // Predict quiz buttons
   els.checkQuizBtn.addEventListener("click", checkPredictQuiz);
   els.resetQuizBtn.addEventListener("click", clearPredictQuiz);
 
-  // Exit ticket buttons
   els.checkExitBtn.addEventListener("click", checkExit);
   els.resetExitBtn.addEventListener("click", clearExit);
 
-  // start locked
   clearPredictQuiz();
   clearExit();
 }
