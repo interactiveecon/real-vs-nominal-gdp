@@ -15,13 +15,13 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <!-- MathJax for LaTeX rendering -->
-<script>
-  window.MathJax = {
-    tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
   <header class="page-header">
@@ -31,7 +31,7 @@
         <h1>Nominal vs Real GDP</h1>
         <p class="sub">
           Adjust prices and quantities for two goods over three years. The lab computes
-          <strong>Nominal GDP</strong>, <strong>Real GDP</strong> (base-year prices), and the <strong>GDP Deflator</strong>.
+          <strong>Nominal GDP</strong> and <strong>Real GDP</strong> (base-year prices).
           First, answer the prediction questions to unlock the results.
         </p>
 
@@ -41,7 +41,6 @@
             <ul>
               <li><strong>Nominal GDP</strong> in year <em>t</em>: \(\sum_i P_{i,t}Q_{i,t}\)</li>
               <li><strong>Real GDP</strong> (base year <em>b</em>) in year <em>t</em>: \(\sum_i P_{i,b}Q_{i,t}\)</li>
-              <li><strong>GDP Deflator</strong>: \(\frac{\text{Nominal}}{\text{Real}}\times 100\)</li>
             </ul>
           </div>
         </details>
@@ -65,8 +64,6 @@
         </div>
 
         <div class="controls-actions">
-          <button id="inflationShockBtn" class="btn">Inflation shock (prices ↑)</button>
-          <button id="quantityShockBtn" class="btn">Quantity shock (quantities ↑)</button>
           <button id="resetBtn" class="btn subtle">Reset to scenario</button>
         </div>
 
@@ -80,7 +77,7 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Inputs</h2>
-        <p class="panel-sub">Edit values below (sliders + number boxes). Changes update instantly after unlocking.</p>
+        <p class="panel-sub">Edit values below (sliders + number boxes). Updates apply after unlocking.</p>
       </div>
 
       <div class="inputs-grid">
@@ -256,7 +253,7 @@
         <div class="lock-overlay" id="lockOverlay">
           <div class="lock-box">
             <div class="lock-title">Unlock the results</div>
-            <div class="lock-text">Answer the “Predict first” questions correctly to reveal the table and charts.</div>
+            <div class="lock-text">Answer the “Predict first” questions correctly to reveal the table and chart.</div>
           </div>
         </div>
 
@@ -278,8 +275,8 @@
           <div class="rubric-item" id="ruleDef">
             <span class="rubric-icon" aria-hidden="true">○</span>
             <div class="rubric-text">
-              <div class="rubric-title">Deflator</div>
-              <div class="rubric-sub">Nominal ÷ Real × 100</div>
+              <div class="rubric-title">Compare</div>
+              <div class="rubric-sub">Separate prices vs quantities</div>
             </div>
           </div>
         </div>
@@ -289,11 +286,10 @@
             <thead>
               <tr>
                 <th>Year</th>
+                <th>P<sub>A</sub></th><th>Q<sub>A</sub></th>
+                <th>P<sub>B</sub></th><th>Q<sub>B</sub></th>
                 <th>Nominal GDP</th>
                 <th>Real GDP (base-year prices)</th>
-                <th>GDP Deflator</th>
-                <th>Real growth</th>
-                <th>Inflation (deflator)</th>
               </tr>
             </thead>
             <tbody id="outTable"></tbody>
@@ -302,16 +298,8 @@
 
         <div class="charts">
           <div class="chart-card">
-            <div class="chart-title">Nominal GDP</div>
-            <canvas id="chartNom"></canvas>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title">Real GDP</div>
-            <canvas id="chartReal"></canvas>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title">GDP Deflator</div>
-            <canvas id="chartDef"></canvas>
+            <div class="chart-title">Nominal vs Real GDP</div>
+            <canvas id="chartNR"></canvas>
           </div>
         </div>
 
@@ -324,17 +312,17 @@
 
         <div class="quiz-q">
           <div class="quiz-qtitle" id="exitQ1Title">1) (base-year question loads here)</div>
-          <label class="quiz-opt"><input type="radio" name="e1" value="a"> Real GDP increases in all years</label>
-          <label class="quiz-opt"><input type="radio" name="e1" value="b"> Real GDP changes only in the year whose price changed</label>
-          <label class="quiz-opt"><input type="radio" name="e1" value="c"> Real GDP is unchanged in all years</label>
+          <label class="quiz-opt"><input type="radio" name="e1" value="a"> Real GDP changes in every year</label>
+          <label class="quiz-opt"><input type="radio" name="e1" value="b"> Real GDP changes only in the base year</label>
+          <label class="quiz-opt"><input type="radio" name="e1" value="c"> Real GDP is unchanged in every year</label>
           <div class="quiz-feedback" id="fb_e1"></div>
         </div>
 
         <div class="quiz-q">
           <div class="quiz-qtitle" id="exitQ2Title">2) (scenario question loads here)</div>
-          <label class="quiz-opt"><input type="radio" name="e2" value="a"> Real GDP increases</label>
-          <label class="quiz-opt"><input type="radio" name="e2" value="b"> Real GDP decreases</label>
-          <label class="quiz-opt"><input type="radio" name="e2" value="c"> Real GDP is unchanged</label>
+          <label class="quiz-opt"><input type="radio" name="e2" value="a"> Mostly prices</label>
+          <label class="quiz-opt"><input type="radio" name="e2" value="b"> Mostly quantities</label>
+          <label class="quiz-opt"><input type="radio" name="e2" value="c"> Both matter about equally</label>
           <div class="quiz-feedback" id="fb_e2"></div>
         </div>
 
@@ -349,8 +337,8 @@
 
   <footer class="container footer">
     <div class="footer-inner">
-      <div class="footer-note">Tip: Non–base-year price changes do not affect real GDP; base-year price changes do.</div>
-      <div class="footer-note">Exit ticket adapts to the base year and your current scenario.</div>
+      <div class="footer-note">Key idea: Real GDP depends on base-year prices; changing base-year prices changes Real GDP everywhere.</div>
+      <div class="footer-note">Non–base-year price changes don’t affect Real GDP (they affect nominal).</div>
     </div>
   </footer>
 
