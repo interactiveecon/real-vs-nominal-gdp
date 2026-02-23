@@ -1,6 +1,7 @@
 /* global generateScenario, Chart */
 
 const YEARS = ["Year 1", "Year 2", "Year 3"];
+const Y_AXIS_MAX = 20000; // static axis: 2 goods * (Pmax 50) * (Qmax 200) = 20000
 
 const els = {
   baseYear: document.getElementById("baseYear"),
@@ -93,10 +94,15 @@ function setFeedback(el, ok, msg) {
 }
 
 function clearRadios(names) {
-  names.forEach(q => document.querySelectorAll(`input[name="${q}"]`).forEach(r => { r.checked = false; }));
+  names.forEach(q =>
+    document.querySelectorAll(`input[name="${q}"]`).forEach(r => { r.checked = false; })
+  );
 }
 
-function clearPredictQuiz() {
+/* -------------------------
+   Predict-first quiz (only required once per page load)
+------------------------- */
+function clearPredictQuizUI() {
   clearRadios(["q1","q2","q3"]);
   if (els.quizStatus) els.quizStatus.textContent = "";
   [els.fb_q1, els.fb_q2, els.fb_q3].forEach(x => {
@@ -104,6 +110,11 @@ function clearPredictQuiz() {
     x.textContent = "";
     x.classList.remove("good","bad");
   });
+}
+
+function requirePredictQuizOnce() {
+  // called only at initial page load
+  clearPredictQuizUI();
   lockOutputs();
   setStatus("Answer the prediction questions to unlock the results.");
 }
@@ -142,16 +153,18 @@ function checkPredictQuiz() {
   }
 
   if (allCorrect) {
-    if (els.quizStatus) els.quizStatus.textContent = "Unlocked ✓ Now explore by editing prices vs quantities.";
+    if (els.quizStatus) els.quizStatus.textContent = "Unlocked ✓";
     unlockOutputs();
-    setStatus("Unlocked. Try changing only prices vs only quantities and compare nominal vs real.");
+    setStatus("Unlocked. Now try changing only prices vs only quantities and compare nominal vs real.");
   } else {
     if (els.quizStatus) els.quizStatus.textContent = "Not yet—fix the incorrect items and try again.";
     lockOutputs();
   }
 }
 
-/* ---------- Inputs binding ---------- */
+/* -------------------------
+   Inputs binding
+------------------------- */
 function bindPair(rangeId, numberId, getVal, setVal) {
   const r = document.getElementById(rangeId);
   const n = document.getElementById(numberId);
@@ -184,7 +197,9 @@ function setupBindings() {
   }
 }
 
-/* ---------- Computation ---------- */
+/* -------------------------
+   Computation
+------------------------- */
 function computeNominalReal() {
   const b = Number(els.baseYear.value);
   const basePrices = { pA: state[b].pA, pB: state[b].pB };
@@ -201,7 +216,9 @@ function computeNominalReal() {
   return { nominal, real };
 }
 
-/* ---------- Rendering ---------- */
+/* -------------------------
+   Rendering
+------------------------- */
 function updateTable(series) {
   const { nominal, real } = series;
 
@@ -235,12 +252,15 @@ function makeNRChart() {
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      plugins: {
-        legend: { display: true }
-      },
+      plugins: { legend: { display: true } },
       scales: {
         x: { grid: { display: false } },
-        y: { grid: { display: true } }
+        y: {
+          min: 0,
+          max: Y_AXIS_MAX,
+          grid: { display: true },
+          ticks: { maxTicksLimit: 6 }
+        }
       }
     }
   });
@@ -256,14 +276,14 @@ function updateChart(series) {
   chartNR.update();
 }
 
-function updateExplanation(series) {
+function updateExplanation() {
   const b = Number(els.baseYear.value);
   const baseLabel = YEARS[b];
 
   els.explain.innerHTML =
     `Base year is <strong>${baseLabel}</strong>. Real GDP uses base-year prices and current quantities. ` +
-    `Try changing a <em>non–base-year</em> price (e.g., Year 2 price when base year is Year 1): nominal changes, real does not. ` +
-    `Try changing a quantity: both nominal and real change.`;
+    `Changing a <em>non–base-year</em> price changes nominal GDP but does not change real GDP. ` +
+    `Changing a quantity changes both nominal and real GDP.`;
 }
 
 function updateAll() {
@@ -271,11 +291,13 @@ function updateAll() {
   const series = computeNominalReal();
   updateTable(series);
   updateChart(series);
-  updateExplanation(series);
+  updateExplanation();
   completeRubric();
 }
 
-/* ---------- Exit Ticket ---------- */
+/* -------------------------
+   Exit Ticket
+------------------------- */
 function clearExit() {
   clearRadios(["e1","e2"]);
   if (els.exitStatus) els.exitStatus.textContent = "";
@@ -297,36 +319,30 @@ function refreshExitPrompts() {
       `1) Real GDP uses base-year prices. If you increase prices in the base year (${baseLabel}) only (quantities fixed), what happens to Real GDP across years?`;
   }
 
-  // Exit Q2: classify Year1->Year2 as mostly prices vs quantities vs both
-  // Use a simple, transparent decomposition at base-year prices:
-  // ΔNominal = Σ(P2Q2 - P1Q1)
-  // ΔReal    = Σ(PbQ2 - PbQ1)  (quantity effect at base prices)
-  // Price effect = ΔNominal - (Σ(PbQ2 - PbQ1) using Pb=base prices AND Q's)?? We'll use:
-  // Price-only at current quantities: Σ((P2-P1)*Q2). Quantity-only at base prices: Σ(Pb*(Q2-Q1)).
+  // Exit Q2: classify Year1->Year2 as mostly prices vs mostly quantities vs both
   const basePrices = { pA: state[b].pA, pB: state[b].pB };
 
   const dQ_A = state[1].qA - state[0].qA;
   const dQ_B = state[1].qB - state[0].qB;
 
   const qtyEffect = basePrices.pA * dQ_A + basePrices.pB * dQ_B;
-
   const priceEffect = (state[1].pA - state[0].pA) * state[1].qA + (state[1].pB - state[0].pB) * state[1].qB;
 
   const absQ = Math.abs(qtyEffect);
   const absP = Math.abs(priceEffect);
 
   let correct;
-  if (absQ < 1e-6 && absP < 1e-6) correct = "c";        // nothing changed
-  else if (absP > 1.5 * absQ) correct = "a";            // mostly prices
-  else if (absQ > 1.5 * absP) correct = "b";            // mostly quantities
-  else correct = "c";                                    // both about equally
+  if (absQ < 1e-6 && absP < 1e-6) correct = "c";
+  else if (absP > 1.5 * absQ) correct = "a";   // mostly prices
+  else if (absQ > 1.5 * absP) correct = "b";   // mostly quantities
+  else correct = "c";                          // both about equally
 
   if (els.exitQ2Title) {
     els.exitQ2Title.textContent =
       `2) From Year 1 → Year 2 (with base year ${baseLabel}), the change in GDP is driven mostly by:`;
   }
 
-  els.exitCard.dataset.e1 = "a";   // base-year price changes affect real GDP in all years
+  els.exitCard.dataset.e1 = "a";
   els.exitCard.dataset.e2 = correct;
 }
 
@@ -349,14 +365,14 @@ function checkExit() {
 
   setFeedback(els.fb_e1, ok1,
     ok1
-      ? "✓ Correct: changing base-year prices changes Real GDP in every year (because those prices are used for all years)."
+      ? "✓ Correct: changing base-year prices changes Real GDP in every year (those prices are used for all years)."
       : "Not quite. Real GDP uses base-year prices for every year, so changing base-year prices changes Real GDP in every year."
   );
 
   setFeedback(els.fb_e2, ok2,
     ok2
       ? "✓ Correct for this scenario."
-      : "Not quite. Compare how much quantities changed (at base prices) versus how much prices changed (at Year 2 quantities)."
+      : "Not quite. Compare quantity changes (at base prices) versus price changes (at Year 2 quantities)."
   );
 
   if (els.exitStatus) {
@@ -364,7 +380,9 @@ function checkExit() {
   }
 }
 
-/* ---------- Scenario control ---------- */
+/* -------------------------
+   Scenario control
+------------------------- */
 function syncUIFromState() {
   for (let t = 0; t < 3; t++) {
     const pairs = [
@@ -378,27 +396,40 @@ function syncUIFromState() {
       document.getElementById(nid).value = val;
     }
   }
-  updateAll();
-  refreshExitPrompts();
+  if (outputsUnlocked) {
+    updateAll();
+    refreshExitPrompts();
+  }
 }
 
 function newScenario() {
   scenarioSnapshot = generateScenario();
   state = scenarioSnapshot.map(y => ({ ...y }));
   syncUIFromState();
-  clearPredictQuiz();
   clearExit();
+  // IMPORTANT: do NOT relock outputs once unlocked
+  if (!outputsUnlocked) {
+    setStatus("New scenario generated. Complete Predict first to unlock.");
+  } else {
+    setStatus("New scenario generated (still unlocked).");
+  }
 }
 
 function resetToScenario() {
   if (!scenarioSnapshot) return;
   state = scenarioSnapshot.map(y => ({ ...y }));
   syncUIFromState();
-  clearPredictQuiz();
   clearExit();
+  if (!outputsUnlocked) {
+    setStatus("Reset to scenario. Complete Predict first to unlock.");
+  } else {
+    setStatus("Reset to scenario (still unlocked).");
+  }
 }
 
-/* ---------- Init ---------- */
+/* -------------------------
+   Init
+------------------------- */
 function init() {
   scenarioSnapshot = generateScenario();
   state = scenarioSnapshot.map(y => ({ ...y }));
@@ -418,12 +449,13 @@ function init() {
   els.resetBtn.addEventListener("click", resetToScenario);
 
   els.checkQuizBtn.addEventListener("click", checkPredictQuiz);
-  els.resetQuizBtn.addEventListener("click", clearPredictQuiz);
+  els.resetQuizBtn.addEventListener("click", clearPredictQuizUI); // clears UI only, does NOT relock if already unlocked
 
   els.checkExitBtn.addEventListener("click", checkExit);
   els.resetExitBtn.addEventListener("click", clearExit);
 
-  clearPredictQuiz();
+  // Require predict-first only on initial load
+  requirePredictQuizOnce();
   clearExit();
 }
 
