@@ -200,27 +200,51 @@ function setupBindings() {
 /* -------------------------
    Computation
 ------------------------- */
-function computeNominalReal() {
+function computeSeries() {
   const b = Number(els.baseYear.value);
   const basePrices = { pA: state[b].pA, pB: state[b].pB };
 
   const nominal = [];
   const real = [];
+  const deflator = [];
 
   for (let t = 0; t < 3; t++) {
     const nom = state[t].pA * state[t].qA + state[t].pB * state[t].qB;
     const rea = basePrices.pA * state[t].qA + basePrices.pB * state[t].qB;
+    const def = (rea === 0) ? NaN : (nom / rea) * 100;
+
     nominal.push(nom);
     real.push(rea);
+    deflator.push(def);
   }
-  return { nominal, real };
+
+  const realGrowth = [
+    NaN,
+    (real[0] === 0) ? NaN : (real[1] - real[0]) / real[0],
+    (real[1] === 0) ? NaN : (real[2] - real[1]) / real[1]
+  ];
+
+  const inflation = [
+    NaN,
+    (deflator[0] === 0) ? NaN : (deflator[1] - deflator[0]) / deflator[0],
+    (deflator[1] === 0) ? NaN : (deflator[2] - deflator[1]) / deflator[1]
+  ];
+
+  return { nominal, real, deflator, realGrowth, inflation };
 }
 
 /* -------------------------
    Rendering
 ------------------------- */
+function fmtPct(x) {
+  return isFinite(x) ? (100 * x).toFixed(1) + "%" : "—";
+}
+function fmtDef(x) {
+  return isFinite(x) ? x.toFixed(1) : "—";
+}
+
 function updateTable(series) {
-  const { nominal, real } = series;
+  const { nominal, real, deflator, inflation, realGrowth } = series;
 
   els.outTable.innerHTML = "";
   for (let t = 0; t < 3; t++) {
@@ -231,6 +255,9 @@ function updateTable(series) {
       <td>${state[t].pB}</td><td>${state[t].qB}</td>
       <td>${money(nominal[t])}</td>
       <td>${money(real[t])}</td>
+      <td>${fmtDef(deflator[t])}</td>
+      <td>${t === 0 ? "—" : fmtPct(inflation[t])}</td>
+      <td>${t === 0 ? "—" : fmtPct(realGrowth[t])}</td>
     `;
     els.outTable.appendChild(tr);
   }
@@ -238,7 +265,7 @@ function updateTable(series) {
 
 function makeNRChart() {
   const ctx = document.getElementById("chartNR");
-  const series = computeNominalReal();
+  const series = computeSeries();
 
   return new Chart(ctx, {
     type: "line",
@@ -257,7 +284,7 @@ function makeNRChart() {
         x: { grid: { display: false } },
         y: {
           min: 0,
-          max: Y_AXIS_MAX,
+          max: Y_AXIS_MAX,   // keep static axis
           grid: { display: true },
           ticks: { maxTicksLimit: 6 }
         }
@@ -288,9 +315,9 @@ function updateExplanation() {
 
 function updateAll() {
   if (!outputsUnlocked) return;
-  const series = computeNominalReal();
+  const series = computeSeries();
   updateTable(series);
-  updateChart(series);
+  updateChart(series);   // chart reads series.nominal/series.real
   updateExplanation();
   completeRubric();
 }
